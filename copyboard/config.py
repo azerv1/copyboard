@@ -1,0 +1,37 @@
+"""Application configuration — plain, immutable value objects with sensible defaults.
+
+Loading these from ``config.json`` lives in :mod:`copyboard.config_loading` so this module stays
+pure (no file I/O), which keeps it safe to import from the domain layer.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import timedelta
+
+_DEFAULT_MAX_ITEMS = 30
+_DEFAULT_MAX_AGE = timedelta(minutes=20)
+_DEFAULT_TOGGLE_HOTKEY = "ctrl+shift+h"
+
+
+@dataclass(frozen=True, slots=True)
+class RetentionPolicy:
+    """How many clippings to keep and for how long. Both limits apply together."""
+
+    max_items: int = _DEFAULT_MAX_ITEMS
+    max_age: timedelta = _DEFAULT_MAX_AGE
+
+
+@dataclass(frozen=True, slots=True)
+class HotkeyConfig:
+    """The global hotkey that shows/hides the viewer window."""
+
+    toggle_viewer_hotkey: str = _DEFAULT_TOGGLE_HOTKEY
+
+
+@dataclass(frozen=True, slots=True)
+class AppConfig:
+    """Top-level configuration bundle wired in at the composition root."""
+
+    retention: RetentionPolicy = field(default_factory=RetentionPolicy)
+    hotkey: HotkeyConfig = field(default_factory=HotkeyConfig)

@@ -1,0 +1,57 @@
+"""Load :class:`AppConfig` from ``config.json``, falling back to defaults for anything missing.
+
+This is the infrastructure counterpart to :mod:`copyboard.config`: it performs the file I/O and
+tolerant parsing, so the pure config value objects never touch the filesystem.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import timedelta
+from pathlib import Path
+from typing import Any
+
+from copyboard.config import AppConfig, HotkeyConfig, RetentionPolicy
+
+DEFAULT_CONFIG_FILENAME = "config.json"
+
+
+def load_app_config_from_json(config_path: Path) -> AppConfig:
+    """Return config parsed from ``config_path``, or built-in defaults if it is missing/empty.
+
+    Unknown keys are ignored and missing sections fall back to their defaults, so a partial or
+    hand-edited file never crashes the app.
+    """
+    if not config_path.is_file():
+        return AppConfig()
+    raw_text = config_path.read_text(encoding="utf-8")
+    if not raw_text.strip():
+        return AppConfig()
+    document = json.loads(raw_text)
+    if not isinstance(document, dict):
+        return AppConfig()
+    return _build_app_config_from_document(document)
+
+
+def _build_app_config_from_document(document: dict[str, Any]) -> AppConfig:
+    defaults = AppConfig()
+    return AppConfig(
+        retention=_build_retention_policy(document.get("retention"), defaults.retention),
+        hotkey=_build_hotkey_config(document.get("hotkey"), defaults.hotkey),
+    )
+
+
+def _build_retention_policy(section: Any, default: RetentionPolicy) -> RetentionPolicy:
+    if not isinstance(section, dict):
+        return default
+    max_items = int(section.get("max_items", default.max_items))
+    default_minutes = default.max_age.total_seconds() / 60
+    max_age_minutes = float(section.get("max_age_minutes", default_minutes))
+    return RetentionPolicy(max_items=max_items, max_age=timedelta(minutes=max_age_minutes))
+
+
+def _build_hotkey_config(section: Any, default: HotkeyConfig) -> HotkeyConfig:
+    if not isinstance(section, dict):
+        return default
+    toggle_hotkey = str(section.get("toggle_viewer_hotkey", default.toggle_viewer_hotkey))
+    return HotkeyConfig(toggle_viewer_hotkey=toggle_hotkey)
