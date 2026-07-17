@@ -26,8 +26,8 @@ Phase/step checklist. See [PLAN.md](PLAN.md) for full detail, [SPEC.md](SPEC.md)
 - [x] 2.4 Tests with fakes + a `TempDirVault` temp-file test — 26 passing total.
 
 ## Phase 3 — Qt clipboard adapters
-- [ ] 3.1 `adapters/qt/qtclipboard.py` — `QtClipboardSource` (+ feedback-loop guard), `QtClipboardSink`.
-- [ ] 3.2 Manual check: copying produces the right clipping kinds.
+- [x] 3.1 `adapters/qt/qtclipboard.py` — `QtClipboardSource` (+ `ClipboardEchoGuard`), `QtClipboardSink`; PNG-by-default, configurable image format.
+- [ ] 3.2 Manual check: copying produces the right clipping kinds (covered by Phase 5 E2E).
 
 ## Phase 4 — Qt viewer UI
 - [ ] 4.1 `adapters/ui/clippingwidget.py` — per-kind rendering + re-copy/delete.
