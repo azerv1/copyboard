@@ -58,8 +58,8 @@ def relaunch_detached() -> None:
     creation_flags = 0
     start_new_session = False
     if sys.platform == "win32":
-        # DETACHED_PROCESS: no console is inherited or created. CREATE_NO_WINDOW belts-and-suspenders
-        # against any console-subsystem fallback. Together with pythonw.exe there is no flash.
+        # DETACHED_PROCESS: no console is inherited or created. CREATE_NO_WINDOW guards against any
+        # console fallback. With pythonw.exe there is no flash.
         creation_flags = (
             subprocess.DETACHED_PROCESS
             | subprocess.CREATE_NEW_PROCESS_GROUP
