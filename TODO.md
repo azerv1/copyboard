@@ -18,6 +18,8 @@ test where feasible.
       refuses to raise, we may need a `SetForegroundWindow` workaround.)
 - [ ] **Edit config** — tray → "Edit config…" opens `config.json` (seeding defaults if missing).
       Note: edits currently apply only after restarting the app.
+- [ ] **Theme** — starts dark; tray → "Toggle light / dark" flips the whole window live (verify all
+      widgets, including buttons and the timestamp, restyle cleanly in both directions).
 
 ## Backlog
 

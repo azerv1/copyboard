@@ -1,0 +1,31 @@
+"""Theme selection: the dark palette is dark, and toggling flips between light and dark."""
+
+from __future__ import annotations
+
+from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import QApplication
+
+from copyboard.adapters.ui.apptheme import ThemeController, _dark_palette, next_theme
+from copyboard.config import Theme
+
+
+def test_dark_palette_uses_a_dark_window_colour(qt_app: QApplication) -> None:
+    palette = _dark_palette()
+    assert palette.color(QPalette.ColorRole.Window).lightness() < 128
+
+
+def test_next_theme_flips_light_and_dark() -> None:
+    assert next_theme(Theme.DARK) is Theme.LIGHT
+    assert next_theme(Theme.LIGHT) is Theme.DARK
+    assert next_theme(Theme.SYSTEM) is Theme.DARK
+
+
+def test_controller_toggles_between_dark_and_light(qt_app: QApplication) -> None:
+    controller = ThemeController(qt_app, Theme.DARK)
+    assert controller.theme is Theme.DARK
+
+    controller.toggle()
+    assert controller.theme is Theme.LIGHT
+
+    controller.toggle()
+    assert controller.theme is Theme.DARK

@@ -8,10 +8,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import timedelta
+from enum import Enum
 
 _DEFAULT_MAX_ITEMS = 30
 _DEFAULT_MAX_AGE = timedelta(minutes=20)
 _DEFAULT_TOGGLE_HOTKEY = "ctrl+shift+h"
+
+
+class Theme(Enum):
+    """The viewer's colour theme. ``SYSTEM`` leaves Qt's native palette untouched."""
+
+    DARK = "dark"
+    LIGHT = "light"
+    SYSTEM = "system"
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,3 +44,4 @@ class AppConfig:
 
     retention: RetentionPolicy = field(default_factory=RetentionPolicy)
     hotkey: HotkeyConfig = field(default_factory=HotkeyConfig)
+    theme: Theme = Theme.DARK

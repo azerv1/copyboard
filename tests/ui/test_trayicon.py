@@ -12,6 +12,7 @@ def test_tray_icon_and_menu_build(qt_app: QApplication) -> None:
     tray = TrayIcon(
         create_default_tray_icon(),
         on_toggle_viewer=lambda: recorded.append("toggle"),
+        on_toggle_theme=lambda: recorded.append("theme"),
         on_edit_config=lambda: recorded.append("edit"),
         on_quit=lambda: recorded.append("quit"),
     )

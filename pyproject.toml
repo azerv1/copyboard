@@ -3,7 +3,7 @@ name = "copyboard"
 version = "0.1.0"
 description = "A cross-platform tray app that shows a live view of your recent clipboard clippings."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "PySide6>=6.7",
     "pynput>=1.7",
@@ -28,14 +28,14 @@ build-backend = "hatchling.build"
 packages = ["copyboard"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true

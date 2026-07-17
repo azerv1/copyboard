@@ -8,6 +8,7 @@ thread through a queued Qt signal.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -16,10 +17,12 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication
 
 from copyboard.adapters.clipboardechoguard import ClipboardEchoGuard
+from copyboard.adapters.processdetach import relaunch_detached, should_relaunch_detached
 from copyboard.adapters.pynputhotkeybinder import PynputHotkeyBinder
 from copyboard.adapters.qt.qtclipboard import QtClipboardSink, QtClipboardSource
 from copyboard.adapters.systemclock import SystemClock
 from copyboard.adapters.tempdirvault import TempDirVault
+from copyboard.adapters.ui.apptheme import ThemeController
 from copyboard.adapters.ui.mainwindow import MainWindow
 from copyboard.adapters.ui.trayicon import TrayIcon, create_default_tray_icon
 from copyboard.application.copyboardservice import CopyboardService
@@ -47,11 +50,18 @@ def _open_config_in_editor(config_path: Path, config: AppConfig) -> None:
 
 
 def main() -> int:
+    # A tray app should free the terminal it was launched from: re-spawn detached and return the
+    # shell immediately. The detached child (guard set) falls through and runs the real app.
+    if should_relaunch_detached(os.environ):
+        relaunch_detached()
+        return 0
+
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
 
     config_path = Path(DEFAULT_CONFIG_FILENAME)
     config = load_app_config_from_json(config_path)
+    theme_controller = ThemeController(app, config.theme)
 
     clock = SystemClock()
     classifier = ClippingClassifier(vault=TempDirVault(), clock=clock)
@@ -70,6 +80,7 @@ def main() -> int:
     tray = TrayIcon(
         create_default_tray_icon(),
         window.toggle_visibility,
+        theme_controller.toggle,
         lambda: _open_config_in_editor(config_path, config),
         app.quit,
     )

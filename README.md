@@ -21,7 +21,8 @@ uv run copyboard   # launch the tray app
 
 The app lives in the **system tray**. Click the tray icon or press the global hotkey
 (**Ctrl+Shift+H** by default) to show/hide the viewer. In the viewer, **Copy** puts an item back on
-the clipboard and **Delete** removes it.
+the clipboard and **Delete** removes it. The tray menu also offers **Toggle light / dark** and
+**Edit config…**.
 
 ## Configuration
 
@@ -30,11 +31,14 @@ Settings load from `config.json` at the repo root (missing/partial files fall ba
 ```json
 {
   "retention": { "max_items": 30, "max_age_minutes": 20 },
-  "hotkey": { "toggle_viewer_hotkey": "ctrl+shift+h" }
+  "hotkey": { "toggle_viewer_hotkey": "ctrl+shift+h" },
+  "theme": "dark"
 }
 ```
 
 Retention keeps at most `max_items` clippings **and** drops anything older than `max_age_minutes`.
+`theme` is `dark` (default), `light`, or `system` (follow the OS); it can also be flipped live from
+the tray.
 
 ## How it works
 

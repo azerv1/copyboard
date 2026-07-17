@@ -11,7 +11,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
-from copyboard.config import AppConfig, HotkeyConfig, RetentionPolicy
+from copyboard.config import AppConfig, HotkeyConfig, RetentionPolicy, Theme
 
 DEFAULT_CONFIG_FILENAME = "config.json"
 
@@ -24,6 +24,7 @@ def write_default_config_file(config_path: Path, config: AppConfig) -> None:
             "max_age_minutes": config.retention.max_age.total_seconds() / 60,
         },
         "hotkey": {"toggle_viewer_hotkey": config.hotkey.toggle_viewer_hotkey},
+        "theme": config.theme.value,
     }
     config_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
@@ -50,7 +51,17 @@ def _build_app_config_from_document(document: dict[str, Any]) -> AppConfig:
     return AppConfig(
         retention=_build_retention_policy(document.get("retention"), defaults.retention),
         hotkey=_build_hotkey_config(document.get("hotkey"), defaults.hotkey),
+        theme=_build_theme(document.get("theme"), defaults.theme),
     )
+
+
+def _build_theme(value: Any, default: Theme) -> Theme:
+    if not isinstance(value, str):
+        return default
+    try:
+        return Theme(value.strip().lower())
+    except ValueError:
+        return default
 
 
 def _build_retention_policy(section: Any, default: RetentionPolicy) -> RetentionPolicy:

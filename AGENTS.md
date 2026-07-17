@@ -42,7 +42,8 @@ This keeps the core reusable behind a future web front-end and unit-testable wit
 
 Settings load from `config.json` at the repo root via `copyboard/config_loading.py`
 (`load_app_config_from_json`); missing/partial files fall back to defaults in `copyboard/config.py`.
-Retention defaults to 30 items / 20 minutes; the viewer toggle hotkey defaults to **Ctrl+Shift+H**.
+Retention defaults to 30 items / 20 minutes; the viewer toggle hotkey defaults to **Ctrl+Shift+H**;
+the theme defaults to **dark** (`dark` / `light` / `system`, toggled live from the tray).
 
 ## Commands (via uv)
 

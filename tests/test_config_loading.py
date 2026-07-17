@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import timedelta
 from pathlib import Path
 
-from copyboard.config import AppConfig
+import pytest
+
+from copyboard.config import AppConfig, Theme
 from copyboard.config_loading import load_app_config_from_json, write_default_config_file
 
 
@@ -46,3 +48,25 @@ def test_partial_config_falls_back_to_defaults(tmp_path: Path) -> None:
     assert config.retention.max_items == 7
     assert config.retention.max_age == AppConfig().retention.max_age
     assert config.hotkey == AppConfig().hotkey
+
+
+def test_default_theme_is_dark() -> None:
+    assert AppConfig().theme is Theme.DARK
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("light", Theme.LIGHT),
+        ("system", Theme.SYSTEM),
+        ("DARK", Theme.DARK),
+        ("nonsense", Theme.DARK),
+    ],
+)
+def test_theme_is_parsed_case_insensitively_with_fallback(
+    tmp_path: Path, value: str, expected: Theme
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(f'{{"theme": "{value}"}}', encoding="utf-8")
+
+    assert load_app_config_from_json(config_path).theme is expected
