@@ -1,18 +1,11 @@
 # Copyboard
 
-A small **cross-platform** (Windows, Linux, macOS) tray app that shows a live view of your recent
-clipboard clippings — text, URLs, paths, JSON, Markdown, shell commands, and images — so you can
-glance back and re-copy anything you copied earlier, not just the last item.
-
-## Why
-
-The OS clipboard only remembers the *last* copied item. While working you copy many things in a row
-— a screenshot, some text, a file path, a URL — and all but the last are lost. Copyboard keeps the
-recent ones visible.
+A small  tray app that shows a live view of your recent
+clipboard clippings so you can glance back and re-copy anything you copied earlier, not just the last item.
 
 ## Install & run
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.10+.
 
 ```
 uv sync            # create .venv and install dependencies
@@ -21,7 +14,7 @@ uv run copyboard   # launch the tray app
 
 The app lives in the **system tray**. Click the tray icon or press the global hotkey
 (**Ctrl+Shift+H** by default) to show/hide the viewer. In the viewer, **Copy** puts an item back on
-the clipboard and **Delete** removes it. The tray menu also offers **Toggle light / dark** and
+the clipboard and **Delete** removes it.
 **Edit config…**.
 
 ## Configuration
@@ -37,17 +30,7 @@ Settings load from `config.json` at the repo root (missing/partial files fall ba
 ```
 
 Retention keeps at most `max_items` clippings **and** drops anything older than `max_age_minutes`.
-`theme` is `dark` (default), `light`, or `system` (follow the OS); it can also be flipped live from
-the tray.
-
-## How it works
-
-- **In-memory** history (clears on exit). Clipboard **images** are written to the OS temp directory
-  and referenced by path; **path** clippings reference the existing file; **text** stays in memory.
-- Built with **PySide6** behind a **Hexagonal (Ports & Adapters)** architecture: the pure core
-  (`copyboard/domain`, `copyboard/application`) never imports Qt, so it is fully unit-tested and could
-  be re-fronted (e.g. as a web app) by swapping only the adapter layer. See
-  [ARCHITECTURE.md](ARCHITECTURE.md).
+`theme` is `dark` (default), `light`, or `system` (follow the OS)
 
 Docs: [SPEC.md](SPEC.md) (scope) · [ARCHITECTURE.md](ARCHITECTURE.md) (design) ·
 [TASKS.md](TASKS.md) (progress) · [PLAN.md](PLAN.md) (phased plan).
