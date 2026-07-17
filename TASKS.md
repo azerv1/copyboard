@@ -35,12 +35,19 @@ Phase/step checklist. See [PLAN.md](PLAN.md) for full detail, [SPEC.md](SPEC.md)
 - [ ] 4.3 GUI-thread observer marshaling (Qt signal).
 
 ## Phase 5 — Tray, hotkey, entry point
-- [ ] 5.1 `adapters/ui/trayicon.py` — `TrayIcon`.
-- [ ] 5.2 `adapters/pynputhotkeybinder.py` — `PynputHotkeyBinder` (Ctrl+Shift+H) via `HotkeyBinder`.
-- [ ] 5.3 `__main__.py` — composition root + `main()`.
-- [ ] 5.4 End-to-end manual verification.
+- [x] 5.1 `adapters/ui/trayicon.py` — `TrayIcon` (+ programmatic icon).
+- [x] 5.2 `adapters/pynputhotkeybinder.py` — `PynputHotkeyBinder` (Ctrl+Shift+H) via `HotkeyBinder`.
+- [x] 5.3 `__main__.py` — composition root + `main()` (pynput→Qt queued-signal bridge).
+- [x] 5.4 Headless boot smoke passed; interactive copy check is for the user on a real desktop.
 
 ## Phase 6 — Polish & final quality gate
-- [ ] 6.1 `README.md` usage; reconcile docs + this checklist.
-- [ ] 6.2 Full `ruff` / `mypy` / `pytest` green across src + tests.
-- [ ] 6.3 Backlog notes.
+- [x] 6.1 `README.md` written; docs + this checklist reconciled.
+- [x] 6.2 Full `ruff` / `mypy` / `pytest` green across src + tests (42 files, 34 tests).
+- [x] 6.3 Backlog notes (below).
+
+## Backlog
+- Disk persistence (history surviving restart) — currently in-memory only.
+- A web front-end reusing the pure core (the hexagonal seam makes it possible).
+- A settings UI (config is edited directly in `config.json`).
+- Image-size caps / thumbnail caching; de-duplication of consecutive identical clippings.
+- Wayland global-hotkey support (pynput needs X11); macOS Accessibility onboarding.

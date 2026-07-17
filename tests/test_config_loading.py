@@ -6,7 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from copyboard.config import AppConfig
-from copyboard.config_loading import load_app_config_from_json
+from copyboard.config_loading import load_app_config_from_json, write_default_config_file
 
 
 def test_missing_file_yields_defaults(tmp_path: Path) -> None:
@@ -26,6 +26,15 @@ def test_full_config_is_loaded(tmp_path: Path) -> None:
     assert config.retention.max_items == 5
     assert config.retention.max_age == timedelta(minutes=10)
     assert config.hotkey.toggle_viewer_hotkey == "ctrl+alt+p"
+
+
+def test_written_default_config_round_trips(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+
+    write_default_config_file(config_path, AppConfig())
+
+    assert config_path.is_file()
+    assert load_app_config_from_json(config_path) == AppConfig()
 
 
 def test_partial_config_falls_back_to_defaults(tmp_path: Path) -> None:

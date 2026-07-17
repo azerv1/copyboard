@@ -16,6 +16,18 @@ from copyboard.config import AppConfig, HotkeyConfig, RetentionPolicy
 DEFAULT_CONFIG_FILENAME = "config.json"
 
 
+def write_default_config_file(config_path: Path, config: AppConfig) -> None:
+    """Serialise ``config`` to ``config_path`` as pretty JSON, seeding a file the user can edit."""
+    document = {
+        "retention": {
+            "max_items": config.retention.max_items,
+            "max_age_minutes": config.retention.max_age.total_seconds() / 60,
+        },
+        "hotkey": {"toggle_viewer_hotkey": config.hotkey.toggle_viewer_hotkey},
+    }
+    config_path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+
 def load_app_config_from_json(config_path: Path) -> AppConfig:
     """Return config parsed from ``config_path``, or built-in defaults if it is missing/empty.
 

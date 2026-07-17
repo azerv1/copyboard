@@ -1,8 +1,9 @@
 """A single row in the viewer: a clipping's preview plus Copy / Delete actions.
 
-Pure view code. It reads the clipping's own ``build_preview_text`` / kind and, for images, renders
-a thumbnail from the temp-file path. User actions are forwarded through injected callbacks so the
-widget never touches the service or domain logic directly.
+Pure view code. It shows the clipping's ``build_preview_text`` (or, for images, a thumbnail rendered
+from the temp-file path) under a muted timestamp; the kind is deliberately not labelled. User
+actions are forwarded through injected callbacks so the widget never touches the service or domain
+logic directly.
 """
 
 from __future__ import annotations
@@ -39,9 +40,12 @@ class ClippingWidget(QWidget):
         row.addWidget(self._build_delete_button())
 
     def _build_content_column(self, clipping: Clipping) -> QVBoxLayout:
+        # The kind (url/path/…) is intentionally not shown — the user can tell at a glance, so the
+        # row stays uncluttered. A muted timestamp is the only chrome above the content.
         column = QVBoxLayout()
-        header = QLabel(f"{clipping.kind.value.upper()} · {clipping.created_at:%H:%M:%S}")
-        column.addWidget(header)
+        timestamp = QLabel(f"{clipping.created_at:%H:%M:%S}")
+        timestamp.setStyleSheet("color: gray; font-size: 11px;")
+        column.addWidget(timestamp)
         column.addWidget(self._build_preview_label(clipping))
         return column
 

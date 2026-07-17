@@ -1,4 +1,4 @@
-"""Shared Qt fixtures. Forces the offscreen platform so UI tests run headless."""
+"""Shared Qt fixtures. Forces the offscreen platform so UI/adapter tests run headless."""
 
 from __future__ import annotations
 

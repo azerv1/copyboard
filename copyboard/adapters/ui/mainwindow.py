@@ -55,6 +55,26 @@ class MainWindow(QWidget):
     def on_history_changed(self, event: HistoryChangeEvent) -> None:
         self._history_changed.emit()
 
+    def toggle_visibility(self) -> None:
+        """Hide only when already frontmost; otherwise surface the window to the front.
+
+        Pressing the hotkey while the window sits behind another app should raise it, not hide it,
+        so we hide only when it is both visible and the active window.
+        """
+        if self.isVisible() and self.isActiveWindow():
+            self.hide()
+            return
+        self.bring_to_front()
+
+    def bring_to_front(self) -> None:
+        """Show, un-minimise, and take focus so the window pops in front of other apps."""
+        self.setWindowState(
+            (self.windowState() & ~Qt.WindowState.WindowMinimized) | Qt.WindowState.WindowActive
+        )
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
     def _refresh_clipping_list(self) -> None:
         self._clear_list_layout()
         for clipping in self._service.list_clippings_newest_first():

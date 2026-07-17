@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QBuffer, QIODevice
-from PySide6.QtGui import QClipboard, QImage
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+from PySide6.QtGui import QClipboard, QImage, QImageWriter
 
 from copyboard.adapters.clipboardechoguard import ClipboardEchoGuard
 from copyboard.domain.clipping import Clipping
@@ -25,6 +25,9 @@ class QtClipboardSource:
     The clipboard exposes an image as a raw in-memory ``QImage`` (there is no original file), so we
     serialise it ourselves. ``image_format`` chooses that container — the default ``png`` is
     lossless and transparency-aware, ideal for screenshots; ``jpg`` etc. work if size matters.
+
+    Windows fires ``dataChanged`` several times for a single copy (twice from browsers, ~4 times
+    from a console), so we remember the last emitted snapshot and drop consecutive duplicates.
     """
 
     def __init__(
@@ -37,6 +40,7 @@ class QtClipboardSource:
         self._echo_guard = echo_guard
         self._image_format = image_format
         self._on_new_content: Callable[[RawClipboardData], None] | None = None
+        self._last_content: RawClipboardData | None = None
         self._clipboard.dataChanged.connect(self._handle_clipboard_data_changed)
 
     def set_new_content_listener(self, listener: Callable[[RawClipboardData], None]) -> None:
@@ -52,20 +56,28 @@ class QtClipboardSource:
         return RawClipboardData()
 
     def _handle_clipboard_data_changed(self) -> None:
-        if self._echo_guard.consume_if_armed():
-            return
         content = self.read_current_content()
-        if content.is_empty() or self._on_new_content is None:
+        if content.is_empty():
             return
-        self._on_new_content(content)
+        if self._echo_guard.consume_if_armed():
+            self._last_content = content
+            return
+        if content == self._last_content:
+            return
+        self._last_content = content
+        if self._on_new_content is not None:
+            self._on_new_content(content)
 
     def _encode_image(self, image: QImage) -> ImagePayload:
-        buffer = QBuffer()
+        byte_array = QByteArray()
+        buffer = QBuffer(byte_array)
         buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-        image.save(buffer, self._image_format.upper().encode("ascii"))
-        data = bytes(buffer.data().data())
+        # QImageWriter, not QImage.save(): PySide6's save() rejects a bytes format at runtime
+        # despite its type stub, silently breaking image capture.
+        writer = QImageWriter(buffer, QByteArray(self._image_format.upper().encode("ascii")))
+        writer.write(image)
         buffer.close()
-        return ImagePayload(data=data, image_format=self._image_format)
+        return ImagePayload(data=bytes(byte_array.data()), image_format=self._image_format)
 
 
 class QtClipboardSink:

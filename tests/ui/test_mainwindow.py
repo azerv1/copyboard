@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from PySide6.QtWidgets import QApplication, QPushButton
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from copyboard.adapters.ui.clippingwidget import ClippingWidget
 from copyboard.adapters.ui.mainwindow import MainWindow
@@ -42,3 +42,27 @@ def test_copy_button_recopies_through_the_service(qt_app: QApplication) -> None:
     copy_buttons[0].click()
 
     assert len(sink.copied_clippings) == 1
+
+
+def test_toggle_from_hidden_brings_window_to_front(qt_app: QApplication) -> None:
+    window, _ = _build_populated_window()
+    assert not window.isVisible()
+
+    window.toggle_visibility()
+
+    assert window.isVisible()
+
+
+def test_bring_to_front_shows_a_hidden_window(qt_app: QApplication) -> None:
+    window, _ = _build_populated_window()
+    window.hide()
+
+    window.bring_to_front()
+
+    assert window.isVisible()
+
+
+def test_rows_do_not_label_the_clipping_kind(qt_app: QApplication) -> None:
+    window, _ = _build_populated_window()
+    # The old header was "KIND · HH:MM:SS"; the kind label (and its "·" separator) is now gone.
+    assert all("·" not in label.text() for label in window.findChildren(QLabel))
