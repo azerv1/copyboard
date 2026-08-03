@@ -8,8 +8,17 @@ clippings, which drives time-based retention even when nothing new is copied.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import QGridLayout, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from copyboard.adapters.ui.clippingwidget import ClippingWidget
 from copyboard.application.copyboardservice import CopyboardService
@@ -30,10 +39,13 @@ class MainWindow(QWidget):
         service: CopyboardService,
         ui_config: UIConfig | None = None,
         prune_interval_ms: int = _DEFAULT_PRUNE_INTERVAL_MS,
+        on_stack_paste_toggled: Callable[[bool], None] | None = None,
+        stack_paste_enabled: bool = False,
     ) -> None:
         super().__init__()
         self._service = service
         self._ui_config = ui_config or UIConfig()
+        self._on_stack_paste_toggled = on_stack_paste_toggled
         self.setWindowTitle("Copyboard")
         self.resize(500, 620)
         # Required for Qt to paint the glass theme's stylesheet `background`/`border` on this plain
@@ -41,6 +53,7 @@ class MainWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         outer_layout = QVBoxLayout(self)
+        outer_layout.addLayout(self._build_header_row(stack_paste_enabled))
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         self._list_container = QWidget()
@@ -61,6 +74,34 @@ class MainWindow(QWidget):
         self._prune_timer.start(prune_interval_ms)
 
         self._refresh_clipping_list()
+
+    def _build_header_row(self, stack_paste_enabled: bool) -> QHBoxLayout:
+        """The window's top strip: the stack-paste toggle, right-aligned above the list."""
+        header_layout = QHBoxLayout()
+        header_layout.addStretch(1)
+        header_layout.addWidget(self._build_stack_paste_button(stack_paste_enabled))
+        return header_layout
+
+    def _build_stack_paste_button(self, stack_paste_enabled: bool) -> QPushButton:
+        button = QPushButton()
+        button.setCheckable(True)
+        button.setChecked(stack_paste_enabled)
+        button.setToolTip(
+            "While on, the paste hotkey pops the newest clipping off the history (LIFO) "
+            "instead of pasting the same thing repeatedly."
+        )
+        button.toggled.connect(self._handle_stack_paste_toggled)
+        self._stack_paste_button = button
+        self._update_stack_paste_button_text(stack_paste_enabled)
+        return button
+
+    def _handle_stack_paste_toggled(self, enabled: bool) -> None:
+        self._update_stack_paste_button_text(enabled)
+        if self._on_stack_paste_toggled is not None:
+            self._on_stack_paste_toggled(enabled)
+
+    def _update_stack_paste_button_text(self, enabled: bool) -> None:
+        self._stack_paste_button.setText(f"Stack paste: {'On' if enabled else 'Off'}")
 
     def on_history_changed(self, event: HistoryChangeEvent) -> None:
         self._history_changed.emit()

@@ -16,7 +16,7 @@ from copyboard.domain.content import ImagePayload, RawClipboardData
 from tests.fakes import FakeClipboardSink, FakeClock, FakeVault
 
 
-def _build_populated_window() -> tuple[MainWindow, FakeClipboardSink]:
+def _build_populated_service() -> tuple[CopyboardService, FakeClipboardSink]:
     clock = FakeClock(datetime(2026, 1, 1, 12, 0, 0))
     sink = FakeClipboardSink()
     service = CopyboardService(
@@ -27,6 +27,11 @@ def _build_populated_window() -> tuple[MainWindow, FakeClipboardSink]:
     )
     service.handle_new_clipboard_content(RawClipboardData(text="hello world"))
     service.handle_new_clipboard_content(RawClipboardData(image=ImagePayload(b"x", "png")))
+    return service, sink
+
+
+def _build_populated_window() -> tuple[MainWindow, FakeClipboardSink]:
+    service, sink = _build_populated_service()
     return MainWindow(service, prune_interval_ms=100_000), sink
 
 
@@ -62,6 +67,50 @@ def test_bring_to_front_shows_a_hidden_window(qt_app: QApplication) -> None:
 
     assert window.isVisible()
     window.hide()  # don't leave a visible top-level window alive into teardown
+
+
+def _find_stack_paste_button(window: MainWindow) -> QPushButton:
+    buttons = [b for b in window.findChildren(QPushButton) if b.text().startswith("Stack paste:")]
+    assert len(buttons) == 1
+    return buttons[0]
+
+
+def test_stack_paste_button_starts_off_by_default(qt_app: QApplication) -> None:
+    window, _ = _build_populated_window()
+
+    button = _find_stack_paste_button(window)
+
+    assert not button.isChecked()
+    assert button.text() == "Stack paste: Off"
+
+
+def test_stack_paste_button_reports_each_toggle(qt_app: QApplication) -> None:
+    toggles: list[bool] = []
+    window = MainWindow(
+        _build_populated_service()[0],
+        prune_interval_ms=100_000,
+        on_stack_paste_toggled=toggles.append,
+    )
+    button = _find_stack_paste_button(window)
+
+    button.click()
+    button.click()
+
+    assert toggles == [True, False]
+    assert button.text() == "Stack paste: Off"
+
+
+def test_stack_paste_button_reflects_the_initial_enabled_state(qt_app: QApplication) -> None:
+    window = MainWindow(
+        _build_populated_service()[0],
+        prune_interval_ms=100_000,
+        stack_paste_enabled=True,
+    )
+
+    button = _find_stack_paste_button(window)
+
+    assert button.isChecked()
+    assert button.text() == "Stack paste: On"
 
 
 def test_rows_do_not_label_the_clipping_kind(qt_app: QApplication) -> None:

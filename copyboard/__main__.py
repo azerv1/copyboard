@@ -20,6 +20,7 @@ from copyboard.adapters.clipboardechoguard import ClipboardEchoGuard
 from copyboard.adapters.processdetach import relaunch_detached, should_relaunch_detached
 from copyboard.adapters.pynputhotkeybinder import PynputHotkeyBinder
 from copyboard.adapters.qt.qtclipboard import QtClipboardSink, QtClipboardSource
+from copyboard.adapters.stackpastecontroller import StackPasteController
 from copyboard.adapters.systemclock import SystemClock
 from copyboard.adapters.tempdirvault import TempDirVault
 from copyboard.adapters.ui.apptheme import ThemeController
@@ -82,7 +83,25 @@ def main() -> int:
     source = QtClipboardSource(clipboard, echo_guard)
     source.set_new_content_listener(service.handle_new_clipboard_content)
 
-    window = MainWindow(service, config.ui)
+    # Stack paste is bound before the window so the window's toggle button can start out reflecting
+    # the configured state, and flip the binding on/off from there.
+    paste_bridge = _HotkeyToggleBridge()
+    paste_bridge.triggered.connect(
+        lambda: _handle_lifo_paste(service), Qt.ConnectionType.QueuedConnection
+    )
+    stack_paste = StackPasteController(
+        PynputHotkeyBinder(
+            config.hotkey.pop_and_paste_hotkey, lambda: paste_bridge.triggered.emit()
+        ),
+        initially_enabled=config.ui.lifo_paste_enabled,
+    )
+
+    window = MainWindow(
+        service,
+        config.ui,
+        on_stack_paste_toggled=stack_paste.set_enabled,
+        stack_paste_enabled=stack_paste.is_enabled,
+    )
     # ThemeController is created after the window so it can apply WA_TranslucentBackground
     # before window.show(), which is required on some platforms (notably Windows).
     theme_controller = ThemeController(app, config.theme, window)
@@ -102,23 +121,11 @@ def main() -> int:
     hotkey = PynputHotkeyBinder(config.hotkey.toggle_viewer_hotkey, lambda: bridge.triggered.emit())
     hotkey.start()
 
-    paste_hotkey: PynputHotkeyBinder | None = None
-    if config.ui.lifo_paste_enabled:
-        paste_bridge = _HotkeyToggleBridge()
-        paste_bridge.triggered.connect(
-            lambda: _handle_lifo_paste(service), Qt.ConnectionType.QueuedConnection
-        )
-        paste_hotkey = PynputHotkeyBinder(
-            config.hotkey.pop_and_paste_hotkey, lambda: paste_bridge.triggered.emit()
-        )
-        paste_hotkey.start()
-
     try:
         return app.exec()
     finally:
         hotkey.stop()
-        if paste_hotkey is not None:
-            paste_hotkey.stop()
+        stack_paste.shutdown()
 
 
 if __name__ == "__main__":
