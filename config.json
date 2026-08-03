@@ -9,6 +9,6 @@
   },
   "ui": {
     "actions_on_right_click": true,
-    "lifo_paste_enabled": true
+    "lifo_paste_enabled": false
   }
 }
