@@ -37,7 +37,7 @@ Click the tray icon to toggle the viewer. Right-click for the menu:
 - Quit Copyboard
 
 **Live theme toggle**  
-Switch between dark, light, and system themes from the tray menu — no restart needed.
+Cycle through the mono, dark, light, and glass themes from the tray menu — no restart needed.
 
 **Retention policy**  
 Both limits apply together: the history keeps at most `max_items` clippings **and** drops anything older than `max_age_minutes`. Pruning runs every second in the background.
@@ -79,7 +79,7 @@ Settings load from `config.json` at the repo root. Missing or partial files fall
 | `retention.max_items` | `30` | Maximum number of clippings to keep |
 | `retention.max_age_minutes` | `20` | Drop clippings older than this many minutes |
 | `hotkey.toggle_viewer_hotkey` | `ctrl+shift+h` | Global show/hide hotkey |
-| `theme` | `dark` | `dark`, `light`, or `system` (follow the OS) |
+| `theme` | `mono` | `mono` (flat greyscale), `dark`, `light`, `glass` (translucent), or `system` (follow the OS) |
 
 You can open the config file directly from the tray menu via **Edit config…**
 

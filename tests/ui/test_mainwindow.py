@@ -7,7 +7,7 @@ from datetime import datetime
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from copyboard.adapters.ui.clippingwidget import ClippingWidget
-from copyboard.adapters.ui.mainwindow import MainWindow
+from copyboard.adapters.ui.mainwindow import MainWindow, compute_column_count
 from copyboard.application.copyboardservice import CopyboardService
 from copyboard.config import RetentionPolicy
 from copyboard.domain.clippingclassifier import ClippingClassifier
@@ -111,6 +111,50 @@ def test_stack_paste_button_reflects_the_initial_enabled_state(qt_app: QApplicat
 
     assert button.isChecked()
     assert button.text() == "Stack paste: On"
+
+
+def test_column_count_grows_with_the_available_width() -> None:
+    assert compute_column_count(400) == 1
+    assert compute_column_count(600) == 2
+    assert compute_column_count(900) == 3
+
+
+def test_column_count_never_drops_below_one_or_exceeds_the_cap() -> None:
+    assert compute_column_count(0) == 1
+    assert compute_column_count(-50) == 1
+    # A very wide window must not spread cards into an unreadable number of thin columns.
+    assert compute_column_count(4000) == 4
+
+
+def test_widening_the_window_reflows_into_more_columns(qt_app: QApplication) -> None:
+    window, _ = _build_populated_window()
+    window.show()
+    window.resize(500, 620)
+    qt_app.processEvents()
+    narrow_columns = window._column_count
+
+    window.resize(1400, 620)
+    qt_app.processEvents()
+
+    # The reflow keys off the scroll area's viewport, not the window: the window resizes before
+    # its children do, so reading its own width here would lag a step behind.
+    assert window._column_count > narrow_columns
+    window.hide()  # don't leave a visible top-level window alive into teardown
+
+
+def test_clippings_fill_grid_cells_without_leaving_a_gap(qt_app: QApplication) -> None:
+    # A mixed text/image history used to leave an empty cell wherever an image forced a row flush.
+    service, _ = _build_populated_service()
+    service.handle_new_clipboard_content(RawClipboardData(text="third"))
+    window = MainWindow(service, prune_interval_ms=100_000)
+    layout = window._list_layout
+    columns = window._column_count
+
+    # Every cell in reading order, up to the number of cards, must be occupied.
+    for index in range(len(window.findChildren(ClippingWidget))):
+        cell = layout.itemAtPosition(index // columns, index % columns)
+        assert cell is not None, f"gap at row {index // columns}, column {index % columns}"
+        assert cell.widget() is not None
 
 
 def test_rows_do_not_label_the_clipping_kind(qt_app: QApplication) -> None:

@@ -52,7 +52,7 @@ copyboard/
     pynputhotkeybinder.py     # PynputHotkeyBinder (cross-platform global hotkey)
     qt/qtclipboard.py         # QtClipboardSource, QtClipboardSink
     ui/mainwindow.py          # MainWindow
-    ui/clippingwidget.py      # ClippingWidget + per-kind renderers
+    ui/clippingwidget.py      # ClippingWidget + per-kind preview font selection
     ui/trayicon.py            # TrayIcon
 ```
 

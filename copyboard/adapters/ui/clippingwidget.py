@@ -1,8 +1,10 @@
 """A single row in the viewer: a clipping's preview plus Copy / Delete actions.
 
-Pure view code. It shows the clipping's ``build_preview_text`` (or, for images, a thumbnail rendered
-from the temp-file path) under a muted timestamp. User actions are forwarded through injected
-callbacks so the widget never touches the service or domain logic directly.
+Pure view code. It shows the clipping's ``build_preview_block`` (or, for images, a thumbnail
+rendered from the temp-file path) under a muted timestamp. Structured kinds — JSON, commands,
+paths, Markdown — are drawn in a fixed-pitch font so their columns line up. Every card is the same
+fixed height, which is what keeps the viewer's grid rows regular. User actions are forwarded
+through injected callbacks so the widget never touches the service or domain logic directly.
 
 Two interaction modes are supported (chosen at construction time):
 - **Inline buttons** (default): Copy and Delete buttons appear to the right of each row.
@@ -14,28 +16,40 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import QPoint, Qt
-from PySide6.QtGui import QContextMenuEvent, QDrag, QMouseEvent, QPixmap
+from PySide6.QtGui import QContextMenuEvent, QDrag, QFont, QFontDatabase, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from copyboard.adapters.qt.clippingdragdata import build_drag_mime_data
-from copyboard.domain.clipping import Clipping, ImageClipping
+from copyboard.domain.clipping import Clipping, ClippingKind, ImageClipping
 
-_THUMBNAIL_WIDTH = 160
-_THUMBNAIL_HEIGHT = 90
-_WIDE_THUMBNAIL_WIDTH = 340
-_WIDE_THUMBNAIL_HEIGHT = 200
+# Every card is the same size so the grid rows line up and no card is stretched by a taller
+# neighbour. The preview area holds roughly the six lines `build_preview_block` yields.
+_PREVIEW_AREA_HEIGHT = 92
+_CARD_HEIGHT = 138
+_THUMBNAIL_WIDTH = 240
+_THUMBNAIL_HEIGHT = _PREVIEW_AREA_HEIGHT
 
-_CURRENT_CLIPBOARD_BORDER_STYLESHEET = (
-    "#currentClipboardClipping {  border: 2px solid rgba(90, 150, 240, 255);  border-radius: 3px;}"
+# Kinds whose content is structured enough that column alignment aids reading.
+_MONOSPACE_KINDS = frozenset(
+    {ClippingKind.JSON, ClippingKind.COMMAND, ClippingKind.PATH, ClippingKind.MARKDOWN}
 )
+
+
+def _build_monospace_font(point_size: int) -> QFont:
+    """The platform's fixed-pitch UI font, kept at the surrounding text's size."""
+    font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+    if point_size > 0:
+        font.setPointSize(point_size)
+    return font
 
 
 class ClippingWidget(QWidget):
@@ -47,22 +61,30 @@ class ClippingWidget(QWidget):
         on_recopy: Callable[[str], None],
         on_delete: Callable[[str], None],
         actions_on_right_click: bool = True,
-        wide: bool = False,
         is_current_clipboard_item: bool = False,
     ) -> None:
         super().__init__()
         # Required for Qt to paint a stylesheet `background` on a plain QWidget subclass.
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setFixedHeight(_CARD_HEIGHT)
+        # Ignore the content's own width hint. Text with no spaces to wrap at — a long path or a
+        # dense JSON array — otherwise reports a huge minimum width and bullies the grid into
+        # uneven columns. The card takes whatever equal share the grid gives it and clips.
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        # The highlight itself is a `#currentClipboardClipping` rule in the active theme's
+        # stylesheet; setting it here instead would cascade into this card's child widgets.
         if is_current_clipboard_item:
             self.setObjectName("currentClipboardClipping")
-            self.setStyleSheet(_CURRENT_CLIPBOARD_BORDER_STYLESHEET)
-            self.setToolTip("Currently on the system clipboard")
+        self.setToolTip(
+            "Currently on the system clipboard"
+            if is_current_clipboard_item
+            else clipping.build_preview_text()
+        )
         self._clipping_id = clipping.id
         self._clipboard_payload = clipping.to_clipboard_payload()
         self._on_recopy = on_recopy
         self._on_delete = on_delete
         self._actions_on_right_click = actions_on_right_click
-        self._wide = wide
         self._drag_start_position: QPoint | None = None
 
         row = QHBoxLayout(self)
@@ -111,8 +133,9 @@ class ClippingWidget(QWidget):
 
     def _build_content_column(self, clipping: Clipping) -> QVBoxLayout:
         column = QVBoxLayout()
+        column.setSpacing(4)
         timestamp = QLabel(f"{clipping.created_at:%H:%M:%S}")
-        timestamp.setStyleSheet("color: gray; font-size: 11px;")
+        timestamp.setObjectName("clippingTimestamp")
         column.addWidget(timestamp)
         column.addWidget(self._build_preview_label(clipping))
         return column
@@ -120,22 +143,29 @@ class ClippingWidget(QWidget):
     def _build_preview_label(self, clipping: Clipping) -> QLabel:
         if isinstance(clipping, ImageClipping):
             return self._build_thumbnail_label(clipping)
-        label = QLabel(clipping.build_preview_text())
+        label = QLabel(clipping.build_preview_block())
+        label.setTextFormat(Qt.TextFormat.PlainText)
         label.setWordWrap(True)
+        # A fixed height keeps an over-long excerpt inside the card: QLabel clips its own painting,
+        # so the text is cut off rather than pushing the card taller than its neighbours.
+        label.setFixedHeight(_PREVIEW_AREA_HEIGHT)
+        label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        if clipping.kind in _MONOSPACE_KINDS:
+            label.setFont(_build_monospace_font(label.font().pointSize()))
         return label
 
     def _build_thumbnail_label(self, clipping: ImageClipping) -> QLabel:
         label = QLabel()
+        label.setFixedHeight(_PREVIEW_AREA_HEIGHT)
+        label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         pixmap = QPixmap(str(clipping.path))
         if pixmap.isNull():
             label.setText(clipping.build_preview_text())
             return label
-        tw = _WIDE_THUMBNAIL_WIDTH if self._wide else _THUMBNAIL_WIDTH
-        th = _WIDE_THUMBNAIL_HEIGHT if self._wide else _THUMBNAIL_HEIGHT
         label.setPixmap(
             pixmap.scaled(
-                tw,
-                th,
+                _THUMBNAIL_WIDTH,
+                _THUMBNAIL_HEIGHT,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )

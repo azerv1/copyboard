@@ -23,6 +23,7 @@ class Theme(Enum):
     LIGHT = "light"
     SYSTEM = "system"
     GLASS = "glass"
+    MONO = "mono"
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,4 +57,4 @@ class AppConfig:
     retention: RetentionPolicy = field(default_factory=RetentionPolicy)
     hotkey: HotkeyConfig = field(default_factory=HotkeyConfig)
     ui: UIConfig = field(default_factory=UIConfig)
-    theme: Theme = Theme.GLASS
+    theme: Theme = Theme.MONO

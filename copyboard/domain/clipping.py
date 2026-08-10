@@ -20,6 +20,8 @@ from uuid import uuid4
 from copyboard.domain.content import ClipboardPayload
 
 _PREVIEW_MAX_LENGTH = 80
+_PREVIEW_BLOCK_MAX_LINES = 6
+_PREVIEW_BLOCK_MAX_CHARS = 400
 
 
 class ClippingKind(Enum):
@@ -40,6 +42,23 @@ def summarize_as_single_line(text: str, max_length: int = _PREVIEW_MAX_LENGTH) -
     if len(collapsed) <= max_length:
         return collapsed
     return collapsed[: max_length - 1].rstrip() + "…"
+
+
+def summarize_as_preview_block(
+    text: str,
+    max_lines: int = _PREVIEW_BLOCK_MAX_LINES,
+    max_chars: int = _PREVIEW_BLOCK_MAX_CHARS,
+) -> str:
+    """The opening lines of ``text`` verbatim, bounded by a line and a character budget.
+
+    Unlike :func:`summarize_as_single_line` this keeps the copied text's own line structure, so the
+    viewer can show a multi-line excerpt. The content is never reformatted — only truncated.
+    """
+    kept_lines = [line.rstrip() for line in text.rstrip().split("\n")[:max_lines]]
+    block = "\n".join(kept_lines)
+    if len(block) <= max_chars:
+        return block
+    return block[: max_chars - 1].rstrip() + "…"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -63,6 +82,10 @@ class Clipping(ABC):
         """A short, human-readable one-line description for the viewer."""
 
     @abstractmethod
+    def build_preview_block(self) -> str:
+        """A multi-line excerpt for the viewer, keeping the content's own line breaks."""
+
+    @abstractmethod
     def to_clipboard_payload(self) -> ClipboardPayload:
         """What to place back on the system clipboard when re-copied."""
 
@@ -75,6 +98,9 @@ class TextualClipping(Clipping, ABC):
 
     def build_preview_text(self) -> str:
         return summarize_as_single_line(self.text)
+
+    def build_preview_block(self) -> str:
+        return summarize_as_preview_block(self.text)
 
     def to_clipboard_payload(self) -> ClipboardPayload:
         return ClipboardPayload(text=self.text)
@@ -138,6 +164,9 @@ class PathClipping(Clipping):
     def build_preview_text(self) -> str:
         return summarize_as_single_line(str(self.path))
 
+    def build_preview_block(self) -> str:
+        return summarize_as_preview_block(str(self.path))
+
     def to_clipboard_payload(self) -> ClipboardPayload:
         return ClipboardPayload(text=str(self.path))
 
@@ -155,6 +184,9 @@ class ImageClipping(Clipping):
 
     def build_preview_text(self) -> str:
         return f"Image ({self.image_format.upper()}, {self.size_bytes} bytes)"
+
+    def build_preview_block(self) -> str:
+        return self.build_preview_text()
 
     def to_clipboard_payload(self) -> ClipboardPayload:
         return ClipboardPayload(image_path=self.path)
