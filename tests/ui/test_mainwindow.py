@@ -142,19 +142,21 @@ def test_widening_the_window_reflows_into_more_columns(qt_app: QApplication) -> 
     window.hide()  # don't leave a visible top-level window alive into teardown
 
 
-def test_clippings_fill_grid_cells_without_leaving_a_gap(qt_app: QApplication) -> None:
+def test_clippings_are_dealt_across_the_columns_in_turn(qt_app: QApplication) -> None:
     # A mixed text/image history used to leave an empty cell wherever an image forced a row flush.
+    # Cards now go into per-column stacks, one after another, so no gap can open up mid-list.
     service, _ = _build_populated_service()
     service.handle_new_clipboard_content(RawClipboardData(text="third"))
     window = MainWindow(service, prune_interval_ms=100_000)
-    layout = window._list_layout
-    columns = window._column_count
+    columns = window._column_layouts
 
-    # Every cell in reading order, up to the number of cards, must be occupied.
-    for index in range(len(window.findChildren(ClippingWidget))):
-        cell = layout.itemAtPosition(index // columns, index % columns)
-        assert cell is not None, f"gap at row {index // columns}, column {index % columns}"
-        assert cell.widget() is not None
+    assert len(columns) == window._column_count
+    card_counts = [
+        column.count() - 1 for column in columns
+    ]  # -1 for each column's trailing stretch
+    assert sum(card_counts) == len(window.findChildren(ClippingWidget))
+    # Dealing in turn means no column ever runs more than one card ahead of another.
+    assert max(card_counts) - min(card_counts) <= 1
 
 
 def test_rows_do_not_label_the_clipping_kind(qt_app: QApplication) -> None:

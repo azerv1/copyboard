@@ -12,8 +12,8 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QGridLayout,
     QHBoxLayout,
+    QLayout,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -39,6 +39,25 @@ def compute_column_count(available_width_px: int) -> int:
     """
     fitting_columns = available_width_px // _MIN_COLUMN_WIDTH_PX
     return max(1, min(_MAX_COLUMNS, fitting_columns))
+
+
+def _discard_layout_contents(layout: QLayout) -> None:
+    """Recursively strip a layout of its widgets and nested layouts, scheduling widgets for delete.
+
+    The column layouts are nested inside the container, so a flat sweep would detach the columns
+    while leaving their cards alive and parented to the container.
+    """
+    while layout.count():
+        item = layout.takeAt(0)
+        if item is None:
+            continue
+        widget = item.widget()
+        if widget is not None:
+            widget.deleteLater()
+        nested = item.layout()
+        if nested is not None:
+            _discard_layout_contents(nested)
+            nested.deleteLater()
 
 
 class MainWindow(QWidget):
@@ -69,8 +88,12 @@ class MainWindow(QWidget):
         self._scroll_area = QScrollArea()
         self._scroll_area.setWidgetResizable(True)
         self._list_container = QWidget()
-        self._list_layout = QGridLayout(self._list_container)
+        # Columns of independently stacked cards rather than a grid: in a grid every row is as tall
+        # as its tallest card, so one long clipping pads out every short card beside it.
+        self._list_layout = QHBoxLayout(self._list_container)
         self._list_layout.setSpacing(6)
+        self._list_layout.setContentsMargins(0, 0, 0, 0)
+        self._column_layouts: list[QVBoxLayout] = []
         self._column_count = compute_column_count(self.width())
         self._scroll_area.viewport().installEventFilter(self)
         self._scroll_area.setWidget(self._list_container)
@@ -139,7 +162,7 @@ class MainWindow(QWidget):
         self.activateWindow()
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-        """Reflow the grid when the viewport becomes wide (or narrow) enough for another column.
+        """Reflow when the viewport becomes wide (or narrow) enough for another column.
 
         The filter watches the scroll area's *viewport* rather than overriding this window's
         ``resizeEvent``: the window resizes before its children do, so reading the viewport width
@@ -158,9 +181,9 @@ class MainWindow(QWidget):
 
     def _refresh_clipping_list(self) -> None:
         self._clear_list_layout()
+        self._build_empty_columns()
         current_clipboard_id = self._service.get_current_clipboard_clipping_id()
-        row, col = 0, 0
-        for clipping in self._service.list_clippings_newest_first():
+        for position, clipping in enumerate(self._service.list_clippings_newest_first()):
             widget = ClippingWidget(
                 clipping,
                 self._service.recopy_clipping_by_id,
@@ -168,31 +191,22 @@ class MainWindow(QWidget):
                 actions_on_right_click=self._ui_config.actions_on_right_click,
                 is_current_clipboard_item=clipping.id == current_clipboard_id,
             )
-            self._list_layout.addWidget(widget, row, col)
-            col += 1
-            if col == self._column_count:
-                col = 0
-                row += 1
-        self._apply_grid_stretch(last_row=row if col else row - 1)
+            # Deal the cards across the columns in turn, so reading left-to-right, top-to-bottom
+            # still walks the history newest-first. Packing each card into whichever column is
+            # currently shortest would be tidier at the bottom edge but scramble that order.
+            self._column_layouts[position % self._column_count].addWidget(widget)
+        for column in self._column_layouts:
+            column.addStretch(1)  # top-pack: leftover height collects below the last card
 
-    def _apply_grid_stretch(self, last_row: int) -> None:
-        """Give every live column equal width and park the leftover height below the last row.
-
-        Without the trailing row stretch ``QGridLayout`` shares spare vertical space out among the
-        card rows; without clearing the stretch on columns beyond the current count, a grid that
-        was previously wider keeps reserving space for columns that no longer hold anything.
-        """
-        for column in range(self._list_layout.columnCount()):
-            self._list_layout.setColumnStretch(column, 1 if column < self._column_count else 0)
-        for stale_row in range(self._list_layout.rowCount()):
-            self._list_layout.setRowStretch(stale_row, 0)
-        self._list_layout.setRowStretch(last_row + 1, 1)
+    def _build_empty_columns(self) -> None:
+        self._column_layouts = []
+        for _ in range(self._column_count):
+            column = QVBoxLayout()
+            column.setSpacing(6)
+            self._list_layout.addLayout(column, stretch=1)
+            self._column_layouts.append(column)
 
     def _clear_list_layout(self) -> None:
-        while self._list_layout.count():
-            item = self._list_layout.takeAt(0)
-            if item is None:
-                continue
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
+        """Empty the container, discarding the per-column layouts along with their cards."""
+        self._column_layouts = []
+        _discard_layout_contents(self._list_layout)

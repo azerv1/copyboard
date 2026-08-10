@@ -60,12 +60,22 @@ def test_plain_text_preview_keeps_the_proportional_ui_font(qt_app: QApplication)
     assert _find_preview_label(card).font().family() == qt_app.font().family()
 
 
-def test_every_kind_of_card_has_the_same_height(qt_app: QApplication) -> None:
-    # Uniform card heights are what keep the grid rows aligned instead of ragged.
-    heights = {
-        card.height() for card in (_build_text_card(), _build_json_card(), _build_image_card())
-    }
-    assert len(heights) == 1
+def test_a_short_clipping_makes_a_shorter_card_than_a_long_one(qt_app: QApplication) -> None:
+    # Cards size to their content: a one-liner must not reserve room for a six-line excerpt.
+    one_liner = _build_card(TextClipping(created_at=_MOMENT, size_bytes=2, text="hi"))
+    many_lines = _build_card(
+        TextClipping(created_at=_MOMENT, size_bytes=40, text="\n".join("line" for _ in range(6)))
+    )
+    assert one_liner.sizeHint().height() < many_lines.sizeHint().height()
+
+
+def test_a_card_never_grows_past_the_preview_ceiling(qt_app: QApplication) -> None:
+    # ...but one enormous clipping must not be allowed to take over the viewer.
+    huge = _build_card(TextClipping(created_at=_MOMENT, size_bytes=9000, text="word " * 2000))
+    many_lines = _build_card(
+        TextClipping(created_at=_MOMENT, size_bytes=40, text="\n".join("line" for _ in range(6)))
+    )
+    assert huge.sizeHint().height() <= many_lines.sizeHint().height()
 
 
 def test_preview_shows_multiple_lines_of_the_original_text(qt_app: QApplication) -> None:

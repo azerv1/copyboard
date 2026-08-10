@@ -68,7 +68,8 @@ _CURRENT_CLIPPING_STYLESHEET = (
 )
 
 # Monochrome theme — flat greys only, no accent hue and no gradients. Unlike DARK/LIGHT this gives
-# each card a visible surface and border, so an empty grid cell no longer looks identical to a card.
+# each card a visible surface and border, so a card is no longer the same colour as the empty space
+# around it.
 _MONO_STYLESHEET = (
     "MainWindow { background: #0d0d0d; }"
     "QScrollArea { background: transparent; border: none; }"
